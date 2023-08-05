@@ -48,7 +48,6 @@ function injectDefault($args, $tableName, $default, $lineNr){
   # Iterate over each token.
   for($ii=0; $ii<COUNT($args); $ii++) {
   
-#print "$ii {" . $args[$ii] . "} ";
     switch($args[$ii]){
       case 'NULL,':
         if(!$flagComma){
@@ -98,7 +97,7 @@ function getFirstValueFromEnumSet($line){
 }
 
 #
-# All updates for table $taleName
+# All updates for table $tableName
 # 
 function updateTable($tableName, $lines, $lineNr) {
   global $updateEnumSet;
@@ -107,10 +106,9 @@ function updateTable($tableName, $lines, $lineNr) {
   # Given $lineNr is until end of table definition. Subtract table definition and count from there.
   $lineNr-=count($lines);
   
+  # Example $line: `name` varchar(200) NOT NULL DEFAULT '',
   foreach($lines as $line){
     $lineNr++;
-    
-    # $line: `name` varchar(200) NOT NULL DEFAULT '',
     
     $str='';
     
@@ -131,6 +129,7 @@ function updateTable($tableName, $lines, $lineNr) {
     # Split 'varchar(123)' into 'varchar'
     $token=explode('(',$args[1]);
 
+    # Get default depending on the column type
     switch($token[0]){
       case 'date': 
         $str=injectDefault($args,$tableName, "'0000-00-00'", $lineNr);
@@ -205,10 +204,6 @@ if ( $argv[1] == '') {
   exit(1);
 }
 
-#
-# Main
-#
-
 $tableName='';
 $lines=array();
 $lineNr=0;
@@ -238,7 +233,9 @@ foreach(file($argv[1]) as $line) {
   }
 }
 
-echo "#\n# SET/ENUM - first value as default - check these before updating:\n#\n\n";
-echo $updateEnumSet;
-
+if($updateEnumSet!=''){
+  echo "\n#\n# SET/ENUM - first value as default - check these before updating:\n#\n\n";
+  echo $updateEnumSet;
+}
+  
 ?>
