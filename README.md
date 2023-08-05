@@ -9,7 +9,7 @@ If there are tons of tables and columns, it's time consuming to do this manually
 
 `mysqlFixDefault.sh DB_NAME`
 
-## Manually verify and apply updates manually
+## Generate update statements, verify and apply manually
 
 Script mysqlFixDefault.php parses a MySQL DB-scheme dump and show updates for all columns which do not have a default value defined.
 
