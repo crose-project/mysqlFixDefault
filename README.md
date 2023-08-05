@@ -7,7 +7,7 @@ If there are tons of tables and columns, it's time consuming to do this manually
 
 ## Apply changes directly on the DB
 
-mysqlFixDefault.sh DB_NAME
+`mysqlFixDefault.sh DB_NAME`
 
 ## Manually verify and apply updates manually
 
