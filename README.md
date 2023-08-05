@@ -3,7 +3,7 @@ Starting with MariaDB 10.2, a DEFAULT definition per column is necessary for INS
 
 It is possible to redefine the old behaviour via `SET sql_mode = 'ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';` - but it's better to respect the new defaults.
 
-If there are tons of tables and columns, it's time consuming to do this manually. These two scripts will do the job.
+If there are tons of tables and columns, it's time consuming to do this manually. There are two scripts, `mysqlFixDefault.sh` (one step solution) and `mysqlFixDefault.php` (verify all updates and apply manually) will do the job.
 
 ## Apply changes directly on the DB
 
