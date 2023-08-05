@@ -6,7 +6,7 @@
 #
 # Skript should run 
 # * locally on the DB server
-# * as a user who as 'SELECT' and 'ALTER' rights on the given DB.
+# * as a MYSQL user who has 'SELECT' and 'ALTER' rights on the given DB.
 #
 # Script needs: php, mysql, mysqldump
 
