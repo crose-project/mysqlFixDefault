@@ -29,7 +29,7 @@ php $SCRIPT $DBSCHEME > ${DBSCHEME}.alter
 
 # Play alter commands
 mysql $1 < ${DBSCHEME}.alter
-set -x
+set +x
 
 echo 
 echo "Changed: `wc -l ${DBSCHEME}.alter`"
