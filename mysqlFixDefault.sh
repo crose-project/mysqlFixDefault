@@ -11,7 +11,7 @@
 # Script needs: php, mysql, mysqldump
 
 SCRIPT=`dirname $0`/mysqlFixDefault.php
-DBSCHEME=`mkfile`.sql
+DBSCHEME=`mktemp XXXX.sql`
 
 [ -z "$1" ] && echo "Usage: $0 <dbname>" && exit 1
 
