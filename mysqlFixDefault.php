@@ -37,6 +37,7 @@
 #
 
 $updateEnumSet='';
+$dirty=false;
 
 #
 # If there is no 'DEFAULT': Inject " DEFAULT $default" at the correct position and return the update string.
@@ -81,7 +82,8 @@ function injectDefault($args, $tableName, $default, $lineNr){
   if($pos==(COUNT($args)-1)){
     $args[$pos] .= ';';
   }
-  
+
+  $dirty=true;
   return "ALTER TABLE $tableName CHANGE " . $args[0] . " " . implode(' ', $args) ;
 }
 
@@ -237,5 +239,8 @@ if($updateEnumSet!=''){
   echo "\n#\n# SET/ENUM - first value as default - check these before updating:\n#\n\n";
   echo $updateEnumSet;
 }
-  
+
+if(!$dirty){
+  echo "All columns with defaults - nothing to do\n";
+}
 ?>
