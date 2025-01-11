@@ -198,7 +198,7 @@ function updateTable($tableName, $lines, $lineNr) {
 # Main
 #
 
-if ( $argv[1] == '') {
+if ( ($argv[1]??'') == '') {
 
   echo "Usage: " . $argv[0] . " <file.sql>\n";
   exit(1);
