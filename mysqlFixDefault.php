@@ -240,7 +240,7 @@ if($updateEnumSet!=''){
   echo $updateEnumSet;
 }
 
-if(!$dirty){
+if($dirty){
   echo "All columns with defaults - nothing to do\n";
 }
 ?>
