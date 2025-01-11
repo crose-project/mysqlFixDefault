@@ -43,6 +43,7 @@ $dirty=false;
 # If there is no 'DEFAULT': Inject " DEFAULT $default" at the correct position and return the update string.
 #
 function injectDefault($args, $tableName, $default, $lineNr){
+  global $dirty;
   $flagComma=false;
   $flagNull=false;
   
@@ -240,7 +241,7 @@ if($updateEnumSet!=''){
   echo $updateEnumSet;
 }
 
-if($dirty){
+if(!$dirty){
   echo "All columns with defaults - nothing to do\n";
 }
 ?>
