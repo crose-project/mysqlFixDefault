@@ -1,6 +1,6 @@
 <?php
 
-#
+# Version: 1.0 / CR / 26.04.2026
 # Repo: git@github.com:crose-project/mysqlFixDefault.git
 #
 # Script parses a MySQL DB-scheme dump and creates updates for all columns which do not have a default value defined.
