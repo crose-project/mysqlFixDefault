@@ -5,8 +5,11 @@
 # 
 # Usage:
 # - Create DB scheme dump via phpMyAdmin or 'mysqldump --no-data DB_NAME > scheme.sql'.
-# - Call: `php mysqlFixDefault.php scheme.sql > schemeUpdate.sql`
+# - Call: `php mysqlFixDefault.php scheme.sql [-e]` > schemeUpdate.sql`
 # - Play `schemeUpdate.sql` in phpMyAdmin or via 'mysql DB_NAME < schemeUpdate.sql'.
+#
+# Options:
+# - -e : Extended mode - also overwrite existing empty defaults for text/varchar columns
 #
 # Note: 
 # - for enum/set the first value will be taken as default. 
@@ -39,13 +42,70 @@
 $updateEnumSet='';
 $dirty=false;
 
+$extendedMode=false;
+
+# Parse command line arguments
+if (isset($argv[2]) && $argv[2] == '-e') {
+    $extendedMode = true;
+} elseif (isset($argv[1]) && $argv[1] == '-e') {
+    echo "Usage: " . $argv[0] . " <file.sql> [-e]\n";
+    echo "  -e : Extended mode - also overwrite existing empty defaults for text/varchar\n";
+    exit(1);
+}
+
+#
+# Check if the current default is an empty string for text/varchar columns
+#
+function isEmptyDefault($args, $columnType) {
+    global $extendedMode;
+    
+    if (!$extendedMode) {
+        return false;
+    }
+    
+    # Only check text and varchar columns
+    $token = explode('(', $columnType);
+    $baseType = $token[0];
+    
+    if (!in_array($baseType, ['varchar', 'tinytext', 'text', 'longtext'])) {
+        return false;
+    }
+    
+    # Find DEFAULT position and check the value
+    for ($i = 0; $i < count($args); $i++) {
+        if ($args[$i] == 'DEFAULT') {
+            $defaultValue = $args[$i + 1] ?? '';
+            # Remove trailing comma if present
+            $defaultValue = rtrim($defaultValue, ',');
+            
+            # Check if it's an empty string default (various formats from mysqldump)
+            # '' = simple empty string
+            # ''' = escaped single quote version  
+            # '''''' = mysqldump format for empty string (two escaped quotes)
+            if ($defaultValue == "''" || 
+                $defaultValue == "'''" || 
+                $defaultValue == "''''''"|| # Common mysqldump format for empty string
+                $defaultValue == "\\'\\''" ||  # Backslash escaped version
+                $defaultValue == "'\\'\\''") {  # Common mysqldump format for empty string
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 #
 # If there is no 'DEFAULT': Inject " DEFAULT $default" at the correct position and return the update string.
+# In extended mode: Also handle existing empty defaults for text/varchar columns.
 #
-function injectDefault($args, $tableName, $default, $lineNr){
-  global $dirty;
+function injectDefault($args, $tableName, $default, $lineNr, $columnType){
+    global $extendedMode;
+    global $dirty;
   $flagComma=false;
   $flagNull=false;
+    $hasDefault=false;
+    $defaultPos=-1;
   
   # Iterate over each token.
   for($ii=0; $ii<COUNT($args); $ii++) {
@@ -64,13 +124,41 @@ function injectDefault($args, $tableName, $default, $lineNr){
         break;
         
       case 'DEFAULT':
-        return '';
+                $hasDefault=true;
+                $defaultPos=$ii;
+                break;
         
       default:
         break;
     }
   }
   
+    # If we have a default and we're not in extended mode, skip
+    if ($hasDefault && !$extendedMode) {
+        return '';
+    }
+    
+    # If we have a default and we're in extended mode, check if it should be overwritten
+    if ($hasDefault && $extendedMode) {
+        if (!isEmptyDefault($args, $columnType)) {
+            return '';
+        }
+        # Replace existing default value - preserve any trailing comma from original
+        $originalValue = $args[$defaultPos + 1];
+        $hasTrailingComma = (substr($originalValue, -1) == ',');
+        
+        $args[$defaultPos + 1] = $default;
+        if ($hasTrailingComma && substr($default, -1) != ',') {
+            $args[$defaultPos + 1] .= ',';
+        }
+        
+        if ($defaultPos + 1 == COUNT($args) - 1) {
+            $args[$defaultPos + 1] = rtrim($args[$defaultPos + 1], ',') . ';';
+        }
+        return "ALTER TABLE $tableName CHANGE " . $args[0] . " " . implode(' ', $args);
+    }
+    
+    # Handle case where there's no default
   if(($pos??0)==0){
   
     fwrite(STDERR, "[$tableName, $lineNr] Missing NULL: " . implode(' ', $args) . "\n");
@@ -135,14 +223,14 @@ function updateTable($tableName, $lines, $lineNr) {
     # Get default depending on the column type
     switch($token[0]){
       case 'date': 
-        $str=injectDefault($args,$tableName, "'0000-00-00'", $lineNr);
+                $str=injectDefault($args,$tableName, "'0000-00-00'", $lineNr, $args[1]);
         break;
       case 'datetime': 
       case 'timestamp': 
-        $str=injectDefault($args,$tableName, "'0000-00-00 00:00:00'", $lineNr);
+                $str=injectDefault($args,$tableName, "'0000-00-00 00:00:00'", $lineNr, $args[1]);
         break;
       case 'time': 
-        $str=injectDefault($args,$tableName, "'00:00:00'", $lineNr);
+                $str=injectDefault($args,$tableName, "'00:00:00'", $lineNr, $args[1]);
         break;
       case 'char': 
       case 'varchar': 
@@ -154,7 +242,7 @@ function updateTable($tableName, $lines, $lineNr) {
       case 'tinyblob': 
       case 'mediumblob': 
       case 'longblob': 
-        $str=injectDefault($args,$tableName, "''", $lineNr);
+                $str=injectDefault($args,$tableName, "''", $lineNr, $args[1]);
         break;
       case 'tinyint': 
       case 'smallint': 
@@ -167,12 +255,12 @@ function updateTable($tableName, $lines, $lineNr) {
       case 'float': 
       case 'double': 
       case 'bit': 
-        $str=injectDefault($args,$tableName, '0', $lineNr);
+                $str=injectDefault($args,$tableName, '0', $lineNr, $args[1]);
         break;
       case 'enum': 
       case 'set': 
         $default=getFirstValueFromEnumSet($line);
-        if(''!==($update=injectDefault($args,$tableName, $default, $lineNr))){
+                if(''!==($update=injectDefault($args,$tableName, $default, $lineNr, $args[1]))){
           if($default=="''"){
             # In case the default is '': handle it like all other.
             $str=$update;
@@ -202,8 +290,8 @@ function updateTable($tableName, $lines, $lineNr) {
 #
 
 if ( ($argv[1]??'') == '') {
-
-  echo "Usage: " . $argv[0] . " <file.sql>\n";
+    echo "Usage: " . $argv[0] . " <file.sql> [-e]\n";
+    echo "  -e : Extended mode - also overwrite existing empty defaults for text/varchar\n";
   exit(1);
 }
 
